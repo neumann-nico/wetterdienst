@@ -9,6 +9,7 @@ Added
 
 - Enable selecting a parameter precisely from a dataset by passing a tuple like [("precipitation_height", "kl")] or
   [("precipitation_height", "precipitation_more")], or for cli/restapi use "precipitation_height/kl"
+- Allow parsing DWD radar data in bufr format to a pandas DataFrame
 
 Changed
 =======

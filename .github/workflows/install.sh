@@ -10,7 +10,7 @@ fi
 echo "Installing package and requirements for ${flavor}"
 
 if [[ "${flavor}" = "testing" ]]; then
-  poetry install --no-interaction --extras=sql --extras=export --extras=restapi --extras=explorer
+  poetry install --no-interaction --extras=sql --extras=export --extras=restapi --extras=explorer --extras=bufr
 
 elif [[ "${flavor}" = "docs" ]]; then
   poetry install --no-interaction --extras=docs

@@ -55,6 +55,7 @@ class DwdRadarValues:
         end_date: Optional[Union[str, datetime, timedelta]] = None,
         resolution: Optional[Union[str, Resolution, DwdRadarResolution]] = None,
         period: Optional[Union[str, Period, DwdRadarPeriod]] = None,
+        **kwargs,
     ) -> None:
         """
         :param parameter:       The radar moment to request
@@ -67,6 +68,7 @@ class DwdRadarValues:
         :param resolution: Time resolution for RadarParameter.RADOLAN_CDC,
                                 either daily or hourly or 5 minutes.
         :param period:     Period type for RadarParameter.RADOLAN_CDC
+        :param kwargs:     kwargs used for collecting the data
         """
 
         # Convert parameters to enum types.
@@ -81,6 +83,8 @@ class DwdRadarValues:
         self.period: Period = parse_enumeration_from_template(
             period, DwdRadarPeriod, Period
         )
+
+        self.read_bufr = kwargs.get("read_bufr")
 
         # Sanity checks.
         if self.parameter == DwdRadarParameter.RADOLAN_CDC:
@@ -261,6 +265,7 @@ class DwdRadarValues:
             end_date=self.end_date,
             resolution=self.resolution,
             period=self.period,
+            read_bufr=self.read_bufr,
         ):
             progressbar.update()
             yield item

@@ -53,14 +53,15 @@ jobs:
         path: ${{ steps.poetry-cache-dir.outputs.dir }}
         key: poetry-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}-${{ env.CACHE_NUMBER }}
 
-    - name: Install dependencies
-      #run: poetry install --no-interaction --no-root --extras=sql --extras=export --extras=restapi --extras=explorer
-      run: .github/workflows/install.sh testing
-      #if: steps.poetry-cache-flag.outputs.cache-hit != 'true'
+    - name: Install eccodes (Mac only)
+      run: |
+        if [ "$RUNNER_OS" == "macOS" ]; then
+             brew install eccodes
+        fi
+      shell: bash
 
-    #- name: Install library
-    #  run: poetry install --no-interaction
-    #  #if: steps.poetry-cache-flag.outputs.cache-hit != 'true'
+    - name: Install dependencies
+      run: .github/workflows/install.sh testing
 
     - name: Test
       run: poetry run poe test

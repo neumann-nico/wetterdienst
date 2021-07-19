@@ -8,11 +8,12 @@ import tarfile
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
-from typing import Generator, Optional, Tuple
+from typing import Generator, Optional, Tuple, Union
 
 import pandas as pd
 
 from wetterdienst.exceptions import FailedDownload
+from wetterdienst.metadata.columns import Columns
 from wetterdienst.metadata.extension import Extension
 from wetterdienst.metadata.period import Period
 from wetterdienst.metadata.resolution import Resolution
@@ -46,7 +47,7 @@ class RadarResult:
     Currently, this will relate to exactly one radar data file.
     """
 
-    data: BytesIO
+    data: Union[BytesIO, pd.DataFrame]
     timestamp: datetime = None
     url: str = None
     filename: str = None
@@ -79,6 +80,7 @@ def collect_radar_data(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     verify: Optional[bool] = True,
+    read_bufr: bool = False,
 ) -> RadarResult:
     """
     Collect radar data for given parameters.
@@ -95,9 +97,13 @@ def collect_radar_data(
     :param start_date:      Start date
     :param end_date:        End date
     :param verify:          Whether to verify the response
+    :param read_bufr:       read bufr to pd.DataFrame
 
     :return:                ``RadarResult`` item
     """
+
+    if read_bufr:
+        import pdbufr
 
     # Find latest file.
     if start_date == DwdRadarDate.LATEST:
@@ -211,6 +217,28 @@ def collect_radar_data(
                     for result in _download_generic_data(url=url):
                         if result.timestamp is None:
                             result.timestamp = date_time
+
+                        if fmt == DwdRadarDataFormat.BUFR:
+                            df = pdbufr.read_bufr(
+                                result.data,
+                                columns=(
+                                    "stationNumber",
+                                    "latitude",
+                                    "longitude",
+                                    "horizontalReflectivity",
+                                ),
+                            )
+
+                            df = df.rename(
+                                columns={
+                                    "stationNumber": Columns.STATION_ID.value,
+                                    "latitude": Columns.LATITUDE.value,
+                                    "longitude": Columns.LONGITUDE.value,
+                                }
+                            )
+
+                            # rewrite data to result
+                            result.data = df
 
                         if verify:
                             if fmt == DwdRadarDataFormat.HDF5:

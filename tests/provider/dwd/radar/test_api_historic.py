@@ -11,6 +11,7 @@ import pybufrkit
 import pytest
 import requests
 
+from tests import mac_only
 from tests.provider.dwd.radar import (
     station_reference_pattern_de,
     station_reference_pattern_sorted,
@@ -402,6 +403,44 @@ def test_radar_request_site_historic_pe_bufr():
     # Read BUFR file.
     decoder = pybufrkit.decoder.Decoder()
     decoder.process(payload, info_only=True)
+
+
+@mac_only
+@pytest.mark.remote
+def test_radar_request_site_historic_pe_bufr_dataframe():
+    """
+    Verify acquisition of radar/site/PE_ECHO_TOP data works
+    when using a specific date.
+
+    This time, we will use the BUFR data format.
+    """
+
+    # Acquire data from yesterday at this time.
+    timestamp = datetime.utcnow() - timedelta(days=1)
+
+    request = DwdRadarValues(
+        parameter=DwdRadarParameter.PE_ECHO_TOP,
+        start_date=timestamp,
+        site=DwdRadarSite.BOO,
+        fmt=DwdRadarDataFormat.BUFR,
+        read_bufr=True,
+    )
+
+    results = list(request.query())
+
+    if len(results) == 0:
+        raise pytest.skip("Data currently not available")
+
+    df = results[0].data
+
+    assert not df.empty
+
+    assert df.columns == [
+        "station_id",
+        "latitude",
+        "longitude",
+        "horizontalReflectivity",
+    ]
 
 
 @pytest.mark.remote
