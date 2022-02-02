@@ -5,12 +5,22 @@ import operator
 
 import dash_core_components as dcc
 import dash_html_components as html
+from dash.exceptions import PreventUpdate
+from dash_bootstrap_components import Input
+from dash_html_components import Output
 
+from wetterdienst.api import ApiEndpoints
 from wetterdienst.provider.dwd.observation import (
     DwdObservationDataset,
     DwdObservationPeriod,
     DwdObservationResolution,
 )
+
+
+def get_providers():
+    return [
+        {"label": provider, "value": provider} for provider in ApiEndpoints
+    ]
 
 
 def get_parameters():
@@ -38,19 +48,35 @@ def dashboard_layout() -> html:
                 [
                     html.Div(
                         [
-                            html.Div("Parameter:"),
+                            html.Div("Provider:"),
                             dcc.Dropdown(
-                                id="select-parameter",
-                                options=get_parameters(),
-                                value=DwdObservationDataset.TEMPERATURE_AIR.value,
+                                id="select-provider",
+                                options=get_providers(),
+                                value=None,
+                                multi=False,
+                                className="dcc_control",
+                            ),
+                            html.Div("Network:"),
+                            dcc.Dropdown(
+                                id="select-network",
+                                # options=None,
+                                value=None,
                                 multi=False,
                                 className="dcc_control",
                             ),
                             html.Div("Resolution:"),
                             dcc.Dropdown(
                                 id="select-resolution",
-                                options=get_resolutions(),
-                                value=DwdObservationResolution.HOURLY.value,
+                                # options=None,
+                                value=None,
+                                multi=False,
+                                className="dcc_control",
+                            ),
+                            html.Div("Dataset:"),
+                            dcc.Dropdown(
+                                id="select-dataset",
+                                # options=None,
+                                value=None,
                                 multi=False,
                                 className="dcc_control",
                             ),
@@ -125,3 +151,5 @@ def dashboard_layout() -> html:
             html.Div([], id="dataframe-stations", style={"display": "None"}),
         ],
     )
+
+

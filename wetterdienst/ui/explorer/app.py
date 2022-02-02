@@ -15,16 +15,14 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 
 from wetterdienst import Settings
+from wetterdienst.api import ApiEndpoints
 from wetterdienst.exceptions import InvalidParameterCombination
 from wetterdienst.metadata.columns import Columns
-from wetterdienst.provider.dwd.observation import (
-    DwdObservationDataset,
-    DwdObservationPeriod,
-    DwdObservationRequest,
-    DwdObservationResolution,
-)
+from wetterdienst.metadata.resolution import ResolutionType
+
 from wetterdienst.ui.explorer.layout.main import get_app_layout
 from wetterdienst.ui.explorer.library import add_annotation_no_data, default_figure
 from wetterdienst.ui.explorer.util import frame_summary
@@ -72,23 +70,23 @@ def fetch_stations(parameter: str, resolution: str, period: str):
     The data will be stored on a hidden within the browser DOM.
     """
     log.info(f"Requesting stations for " f"parameter={parameter}, " f"resolution={resolution}, " f"period={period}")
-    try:
-        stations = DwdObservationRequest(
-            parameter=DwdObservationDataset(parameter),
-            resolution=DwdObservationResolution(resolution),
-            period=DwdObservationPeriod(period),
-        ).all()
-    except (requests.exceptions.ConnectionError, InvalidParameterCombination) as ex:
-        log.warning(ex)
-        # raise PreventUpdate
-        log.error("Unable to connect to data source")
-        return empty_frame
-
-    df = stations.df
-
-    log.info(f"Propagating stations data frame with {frame_summary(df)}")
-
-    return df.to_json(date_format="iso", orient="split")
+    # try:
+    #     stations = DwdObservationRequest(
+    #         parameter=DwdObservationDataset(parameter),
+    #         resolution=DwdObservationResolution(resolution),
+    #         period=DwdObservationPeriod(period),
+    #     ).all()
+    # except (requests.exceptions.ConnectionError, InvalidParameterCombination) as ex:
+    #     log.warning(ex)
+    #     # raise PreventUpdate
+    #     log.error("Unable to connect to data source")
+    #     return empty_frame
+    #
+    # df = stations.df
+    #
+    # log.info(f"Propagating stations data frame with {frame_summary(df)}")
+    #
+    # return df.to_json(date_format="iso", orient="split")
 
 
 @app.callback(
@@ -125,23 +123,23 @@ def fetch_values(parameter: str, resolution: str, period: str, station_id: int):
     Settings.tidy = False
     Settings.humanize = True
 
-    stations = DwdObservationRequest(
-        parameter=DwdObservationDataset(parameter),
-        resolution=DwdObservationResolution(resolution),
-        period=DwdObservationPeriod(period),
-    ).filter_by_station_id(station_id=(str(station_id),))
-
-    try:
-        df = stations.values.all().df
-    except ValueError:
-        log.exception("No data received")
-        return empty_frame
-
-    df = df.dropna(axis=0)
-
-    log.info(f"Propagating values data frame with {frame_summary(df)}")
-
-    return df.to_json(date_format="iso", orient="split")
+    # stations = DwdObservationRequest(
+    #     parameter=DwdObservationDataset(parameter),
+    #     resolution=DwdObservationResolution(resolution),
+    #     period=DwdObservationPeriod(period),
+    # ).filter_by_station_id(station_id=(str(station_id),))
+    #
+    # try:
+    #     df = stations.values.all().df
+    # except ValueError:
+    #     log.exception("No data received")
+    #     return empty_frame
+    #
+    # df = df.dropna(axis=0)
+    #
+    # log.info(f"Propagating values data frame with {frame_summary(df)}")
+    #
+    # return df.to_json(date_format="iso", orient="split")
 
 
 @app.callback(
@@ -395,6 +393,69 @@ def start_service(listen_address: Optional[str] = None, reload: Optional[bool] =
     host, port = listen_address.split(":")
     port = int(port)
     app.server.run(host=host, port=port, debug=reload)
+
+
+@app.callback(
+    Output("select-network", "options"),
+    Input("select-provider", "value")
+)
+def update_networks(provider):
+    if not provider:
+        raise PreventUpdate
+
+    networks = [{"label": network.name, "value": network.name} for network in ApiEndpoints[provider]]
+
+    return networks
+
+
+@app.callback(
+    Output("select-provider", "value"),
+    Output("select-network", "value"),
+    Output("select-resolution", "options"),
+    Input("select-provider", "value"),
+    Input("select-network", "value"),
+)
+def update_resolutions(provider, network):
+    if not provider:
+        return [], [], []
+
+    if not network:
+        return provider, [], []
+
+    api = ApiEndpoints[provider][network].value
+
+    resolutions = [{"label": resolution.name, "value": resolution.name} for resolution in api._resolution_base]
+
+    return provider, network, resolutions
+
+
+# @app.callback(
+#     Output("select-resolution", "options"),
+#     Input("select-provider", "value"),
+#     Input("select-network", "value"),
+#     Input("select-resolution", "value"),
+# )
+# def update_datasets(provider, network, resolution):
+#     if not provider:
+#         raise PreventUpdate
+#
+#     if not network:
+#         raise PreventUpdate
+#
+#     if not resolution:
+#         raise PreventUpdate
+#
+#     api = ApiEndpoints[provider][network].value
+#
+#     if api._resolution_type == ResolutionType.FIXED:
+#         resolutions = [{"label": api.resolution.name, "value": api.resolution.name}]
+#     else:
+#         resolutions = [{"label": resolution.name, "value": resolution.name} for resolution in api._resolution_base]
+#
+#     return resolutions
+
+
+
 
 
 if __name__ == "__main__":
